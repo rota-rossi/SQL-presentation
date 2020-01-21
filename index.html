@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+
+	<title>SQL Queries - behind the curtain</title>
+
+	<meta name="description" content="A quick and dirty introduction on processing queries">
+	<meta name="author" content="Hakim El Hattab">
+
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+	<link rel="stylesheet" href="css/reveal.css">
+	<link rel="stylesheet" href="css/theme/blood.css" id="theme">
+
+	<!-- Theme used for syntax highlighting of code -->
+	<link rel="stylesheet" href="lib/css/zenburn.css">
+
+	<!-- Printing and PDF exports -->
+	<script>
+		var link = document.createElement('link');
+		link.rel = 'stylesheet';
+		link.type = 'text/css';
+		link.href = window.location.search.match(/print-pdf/gi) ? 'css/print/pdf.css' : 'css/print/paper.css';
+		document.getElementsByTagName('head')[0].appendChild(link);
+	</script>
+
+	<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+</head>
+
+<body>
+
+	<div class="reveal">
+
+		<!-- Any section element inside of this container is displayed as a slide -->
+		<div class="slides">
+			<section>
+				<img src="assets/SQL.png" height="200px" />
+				<h1>SQL</h1>
+				<h3>Behind the curtains</h3>
+			</section>
+
+			<section>
+				<h3>Topics:</h3>
+				<ul>
+					<li>What is a query</li>
+					<li>SQL Processing</li>
+					<li>Indexes</li>
+					<li>Execution Cost</li>
+					<li>Execution Plans</li>
+					<li>Statistics;
+			</section>
+
+			<!-- Example of nested vertical slides -->
+			<section>
+				<h3>What is a query?</h1>
+					<ul>
+						<li class='fragment'>SQL instruction that retrieves data based on specific criteria...</li>
+						<li class='fragment'>...in a
+							<span class="fragment highlight-red">declarative</span> form</li>
+					</ul>
+			</section>
+			<section>
+				<h3>Examples:</h3>
+				<pre><code class="sql">
+SELECT * FROM users;
+				</code></pre>
+				<pre><code class="sql">
+SELECT prod.name, COUNT(sod.*) 
+	FROM production.product prod
+		LEFT OUTER JOIN sales.salesorderdetail sod
+			ON prod.productid = sod.productid
+	WHERE prod.name LIKE 'W%' 
+	GROUP BY prod.name 
+	HAVING COUNT(sod.*) > 100 
+	ORDER BY 2 DESC, 1;
+			</code></pre>
+				<p class='fragment'>You don't say
+					<strong style='color:red'>how</strong> the database will read the data, just
+					<em style='color:red'>what</em> data will be read.</p>
+			</section>
+
+			<section>
+				<h4>Parsing/Running</h4>
+				<img src='assets/SQLProcessing.gif' height="500px">
+				<p>
+					<small style='font-size: 10px;'>Credits: Oracle.</small>
+				</p>
+			</section>
+
+			<section>
+				<h3>Optimization</h3>
+				<p class='fragment'>To find the best way to read the requested data, the optimizer uses several tools, like:</p>
+				<ul>
+					<li class="fragment">Query transformation</li>
+					<li class="fragment">Access Paths</li>
+					<li class="fragment">Indexes</li>
+					<li class="fragment">Statistics</li>
+					<li class="fragment">Hints(*)</li>
+				</ul>
+				<p class='fragment'>
+					<small style='font-size: 16px;'>(*) not available on all dbs</small>
+				</p>
+			</section>
+			<section>
+				<h3 class="fragment">Query Transformation:</h3>
+				<ul>
+					<li class="fragment">Changes the query structure to make it more efficient</li>
+					<li class="fragment">Modifies things like Join order, Boolean operators, and so on.</li>
+				</ul>
+				<h3 class="fragment">Access Paths:</h3>
+				<ul>
+					<li class="fragment">Evaluates the possibles access paths to the requested data (indexes)</li>
+				</ul>
+			</section>
+			<section>
+				<h3>Indexes</h3>
+				<ul>
+					<li class='fragment'>Storage structure for parts of data to improve access times to records</li>
+					<li class="fragment">Most of the time contains one or a few of the table columns</li>
+					<li class="fragment">Usually ignored when:
+						<ul>
+							<li class="fragment">Small dataset</li>
+							<li class="fragment">Query reads large percentage of data</li>
+						</ul>
+					</li>
+					<li class="fragment">Most common data structure: B-Tree</li>
+				</ul>
+			</section>
+			<section>
+				<h3>Indexes</h3>
+				<img class="fragment" src='assets/index.gif'>
+			</section>
+
+			<section>
+				<h3>Cost</h3>
+				<ul>
+					<li class="fragment">Estimated measure of how 'hard' is to read the data</li>
+					<li class="fragment">Based on things like memory usage, CPU usage and I/O</li>
+					<li class="fragment">(as it is estimated, the numbers may vary) </li>
+				</ul>
+			</section>
+			<section>
+				<h3>Statistics</h3>
+				<ul>
+					<li class="fragment">Used to evaluate how many records the query will manipulate</li>
+					<li class="fragment">Two basic measures: Selectivity and Cardinality</li>
+					<li class="fragment">Generally automatically collected by database processes (but can be manually run)</li>
+				</ul>
+			</section>
+			<section>
+				<h3>Execution Plan</h3>
+				<ul>
+					<li class="fragment">Based on Cost and Statistics, the instance defines some execution plans</li>
+					<li class="fragment">The lowest overall cost is usually elected and used</li>
+					<li class="fragment">The selected plan is cached and reused if necessary</li>
+					<li class="fragment">But beware: the selected plan is not always the best plan</li>
+				</ul>
+			</section>
+			<section>
+				<h1>Examples</h1>
+			</section>
+			<section>
+				<h3>Execution Plan</h3>
+				<pre><code class="sql">
+
+development=# EXPLAIN ANALYZE SELECT * FROM T WHERE ID < 10000; 
+				
+				QUERY PLAN 
+----------------------------------------------------------------------------------------------------
+Seq Scan on t (cost=0.00..1693.00 rows=9940 width=6) (actual time=0.008..7.917 rows=9999 loops=1) 
+	Filter: (id < 10000) Rows
+Removed by Filter: 90001 
+Planning time: 0.044 ms
+Execution time: 8.454 ms (5 rows)
+</code></pre>
+			</section>
+
+			<section>
+				<h3>Execution Plan</h3>
+				<pre><code class="sql">
+CREATE UNIQUE INDEX ON T (ID);
+
+EXPLAIN ANALYZE SELECT * FROM T WHERE ID < 10000; 
+
+				QUERY PLAN 
+--------------------------------------------------------------------------------------------------------------------
+Index Scan using t_id_idx on t (cost=0.29..334.24 rows=9940 width=6) (actual time=0.024..1.856 rows=9999 loops=1) 
+	Index Cond: (id < 10000) 
+Planning time: 0.200 ms 
+Execution time: 2.444 ms (4 rows)
+</code></pre>
+			</section>
+			<section>
+				<h3>Execution Plan</h3>
+				<pre><code class="sql">
+EXPLAIN ANALYZE SELECT MAX(id) FROM t WHERE gender='F'; 
+
+				QUERY PLAN 
+-------------------------------------------------------------------------------------------------------------
+Aggregate (cost=1818.16..1818.17 rows=1 width=4) (actual time=15.974..15.974 rows=1 loops=1) 
+	-> Seq Scan on t (cost=0.00..1693.00 rows=50063 width=4) (actual time=0.012..11.808 rows=50058 loops=1) 
+		Filter: ((gender)::text = 'F'::text) 
+		Rows Removed by Filter: 49942 
+Planning time: 0.141 ms 
+Execution time: 15.995 ms (6 rows)
+</code></pre>
+			</section>
+			<section>
+				<h3>Execution Plan (Using Index)</h3>
+				<pre><code class="sql">
+CREATE INDEX ON t USING BRIN (gender);
+EXPLAIN ANALYZE SELECT MAX(id) FROM t WHERE gender='F';
+
+				QUERY PLAN 
+------------------------------------------------------------------------------------------------------------------------------------
+Aggregate (cost=1593.94..1593.95 rows=1 width=4) (actual time=17.712..17.712 rows=1 loops=1) 
+	-> Bitmap Heap Scan on t (cost=399.99..1468.78 rows=50063 width=4) (actual time=0.069..13.439 rows=50058 loops=1) 
+		Recheck Cond: ((gender)::text = 'F'::text) 
+		Rows Removed by Index Recheck: 49942 
+		Heap Blocks: lossy=443 
+		-> Bitmap Index Scan on t_gender_idx (cost=0.00..387.48 rows=50063 width=0) (actual time=0.057..0.057 rows=5120 loops=1) 
+			Index Cond: ((gender)::text = 'F'::text) 
+Planning time: 0.133 ms 
+Execution time: 17.754 ms (9 rows)
+</code></pre>
+			</section>
+			<section>
+				<h3>Execution Plan (Using Index)</h3>
+				<pre><code class="sql">
+CREATE UNIQUE INDEX ON t (id);
+EXPLAIN ANALYZE SELECT MAX(id) FROM t WHERE gender='F';
+
+				QUERY PLAN 
+------------------------------------------------------------------------------------------------------------------------------------------
+Result (cost=0.36..0.37 rows=1 width=0) (actual time=0.018..0.018 rows=1 loops=1) 
+	InitPlan 1 (returns $0) -> Limit (cost=0.29..0.36 rows=1 width=4) (actual time=0.015..0.015 rows=1 loops=1) 
+		-> Index Scan Backward using t_id_idx on t (cost=0.29..3550.29 rows=50063 width=4) (actual time=0.015..0.015 rows=1 loops=1) 
+			Index Cond: (id IS NOT NULL) 
+			Filter: ((gender)::text = 'F'::text)
+Planning time: 0.177 ms 
+Execution time: 0.037 ms
+</code></pre>
+			</section>
+			<section>
+				<h2>Questions?</h2>
+			</section>
+
+			<section>
+				<h3>More information</h3>
+				<ul>
+					<li>
+						<a href="https://docs.oracle.com/en/database/oracle/oracle-database/12.2/admin/index.html"> Oracle Database Administrator's Guide</a>
+					</li>
+					<li>
+						<a href="https://www.postgresql.org/docs/10/static/index.html">
+							PostgreSQL 10.1 Documentation
+						</a>
+					</li>
+					<li>
+						<a href="https://dev.mysql.com/doc/refman/5.7/en/">
+							MySQL 5.7 Documentation
+						</a>
+					</li>
+					<li>This Presentation:
+						<a href="http://weblers.net/presentations/mobx">
+							weblers.net/presentations/SQL
+						</a>
+					</li>
+				</ul>
+			</section>
+
+			<section style="text-align: left;">
+				<h1>Thank you</h1>
+				<p>Leonardo Rota-Rossi</p>
+				<p>leo@weblers.net</p>
+			</section>
+
+		</div>
+
+	</div>
+
+	<script src="lib/js/head.min.js"></script>
+	<script src="js/reveal.js"></script>
+
+	<script>
+		// More info https://github.com/hakimel/reveal.js#configuration
+		Reveal.initialize({
+			controls: true,
+			progress: true,
+			history: true,
+			center: true,
+
+			transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+			// More info https://github.com/hakimel/reveal.js#dependencies
+			dependencies: [
+				{ src: 'lib/js/classList.js', condition: function () { return !document.body.classList; } },
+				{ src: 'plugin/markdown/marked.js', condition: function () { return !!document.querySelector('[data-markdown]'); } },
+				{ src: 'plugin/markdown/markdown.js', condition: function () { return !!document.querySelector('[data-markdown]'); } },
+				{ src: 'plugin/highlight/highlight.js', async: true, callback: function () { hljs.initHighlightingOnLoad(); } },
+				{ src: 'plugin/zoom-js/zoom.js', async: true },
+				{ src: 'plugin/notes/notes.js', async: true }
+			]
+		});
+	</script>
+
+</body>
+
+</html>
